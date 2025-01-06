@@ -172,7 +172,7 @@ def validate_json_structure(data):
 
 # Função para normalizar os dados
 def normalize_data(data):
-    """Normaliza os dados e formata cabeçalhos"""
+    """Normaliza os dados mantendo formatação consistente"""
     try:
         if isinstance(data, dict):
             for key in data.keys():
@@ -181,60 +181,52 @@ def normalize_data(data):
                     for item in data[key]:
                         normalized_item = {}
                         for k, v in item.items():
-                            # Formatar chave substituindo underscores por espaços
-                            col_name = unidecode.unidecode(k).replace('_', ' ').title()
-                            col_name = unidecode.unidecode(k).replace('-', ' ').title()
+                            # Formatar nome da coluna
+                            col_name = k.replace('_', ' ').replace('-', ' ').title()
                             
                             if isinstance(v, list):
-                                if use_yes_no:
-                                    # Modo Sim/Não para listas
-                                    for val in set(v):
-                                        col_name = unidecode.unidecode(val).replace('_', ' ').title()
-                                        normalized_item[col_name] = 'Sim' if val in v else 'Não'
-                                else:
-                                    # Modo lista
-                                    normalized_item[col_name] = ', '.join(map(str, v))
+                                normalized_item[col_name] = ', '.join(str(x).replace('_', ' ').replace('-', ' ') for x in v)
                             else:
                                 normalized_item[col_name] = v
                         normalized_items.append(normalized_item)
                     data[key] = normalized_items
         return data
-        
     except Exception as e:
-        st.error(f"Erro ao normalizar dados: {e}")
+        st.error(f"Erro na normalização: {e}")
         return data
 
 def convert_to_yes_no(data):
-    """Converte listas em formato Sim/Não"""
+    """Converte listas em formato Sim/Não com formatação consistente"""
     if not isinstance(data, dict) or 'usuarios' not in data:
         return data
-        
+    
     modified_data = {'usuarios': []}
     
     for item in data['usuarios']:
         new_item = {}
         for k, v in item.items():
             if isinstance(v, list):
-                # Criar colunas Sim/Não para cada valor único na lista
-                unique_values = set(v)
-                for val in unique_values:
-                    new_key = unidecode.unidecode(str(val)).replace('_', ' ').title()
+                col_prefix = k.replace('_', ' ').replace('-', ' ').title()
+                for val in set(v):
+                    new_key = f"{col_prefix} {str(val).replace('_', ' ').replace('-', ' ').title()}"
                     new_item[new_key] = 'Sim' if val in v else 'Não'
             else:
-                new_item[k] = v
+                new_item[k.replace('_', ' ').replace('-', ' ').title()] = v
         modified_data['usuarios'].append(new_item)
     
     return modified_data
 
-# Função para salvar os dados em Excel
+def format_header(text):
+    """Formata o texto substituindo _ e - por espaço"""
+    return text.replace('_', ' ').replace('-', ' ').title()
+
 def save_data_to_excel(data, filename="relatorio.xlsx"):
     try:
         # Converter dados para DataFrame
         df = pd.DataFrame(data['usuarios'])
         
-        # Formatar cabeçalhos garantindo substituição de underscores
-        df.columns = [col.replace('_', ' ').title() for col in df.columns]
-        df.columns = [col.replace('-', ' ').title() for col in df.columns]
+        # Formatar cabeçalhos
+        df.columns = [format_header(col) for col in df.columns]
         
         # Criar workbook
         wb = openpyxl.Workbook()
@@ -243,8 +235,7 @@ def save_data_to_excel(data, filename="relatorio.xlsx"):
         # Adicionar cabeçalhos formatados
         for col_num, column_title in enumerate(df.columns, 1):
             cell = ws.cell(row=1, column=col_num)
-            cell.value = column_title.replace('_', ' ')  # Garantir substituição
-            cell.value = column_title.replace('-', ' ')
+            cell.value = format_header(column_title)
             cell.font = Font(bold=True)
             cell.fill = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
             cell.font = Font(bold=True, color='FFFFFF', size=12)
