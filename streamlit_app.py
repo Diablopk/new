@@ -12,9 +12,9 @@ import plotly.express as px
 # Adicionar após as importações
 MODELOS_DISPONIVEIS = {
     # Modelos Estáveis
+    "LLama 3.3 70B Versatile": "llama-3.3-70b-versatile",
     "Mixtral 8x7B": "mixtral-8x7b-32768",
     "Gemma 2 9B": "gemma2-9b-it",
-    "LLama 3.3 70B Versatile": "llama-3.3-70b-versatile",
     "LLama 3.1 8B Instant": "llama-3.1-8b-instant",
     "LLama 3 70B": "llama3-70b-8192",
     "LLama 3 8B": "llama3-8b-8192",
@@ -92,8 +92,9 @@ def aplicar_calculos(df, coluna, calculos_selecionados):
 def process_prompt_to_data(prompt, use_yes_no):
     try:
         formatted_prompt = f"""
-        Gere apenas dados JSON válidos sem texto adicional.
-        Formato: {{"usuarios": [{{"nome": "...", "lista": [...]}}]}}
+        Gere um JSON válido contendo uma lista de objetos para uma tabela.
+        O JSON deve ter apenas uma chave principal contendo um array de objetos.
+        Exemplo: {{"dados": [{{"coluna1": "valor1", "coluna2": ["item1", "item2"]}}]}}
         Não inclua explicações, apenas o JSON.
         
         Descrição: {prompt}
@@ -110,17 +111,25 @@ def process_prompt_to_data(prompt, use_yes_no):
         cleaned_data = clean_json_response(content)
         data = json.loads(cleaned_data)
         
-        # Primeiro aplicar conversão Sim/Não se necessário
-        if use_yes_no:
-            data = convert_to_yes_no(data)
+        # Encontrar primeira chave com array
+        main_key = next((k for k, v in data.items() if isinstance(v, list)), None)
+        
+        if main_key:
+            normalized_data = {"usuarios": data[main_key]}
             
-        # Depois normalizar os dados
-        data = normalize_data(data)
-        
-        return data
-        
+            # Aplicar conversão Sim/Não se necessário
+            if use_yes_no:
+                normalized_data = convert_to_yes_no(normalized_data)
+            else:
+                normalized_data = normalize_data(normalized_data)
+                
+            return normalized_data
+        else:
+            st.error("Formato de dados inválido - necessário array de objetos")
+            return None
+            
     except Exception as e:
-        st.error(f"Erro: {str(e)}")
+        st.error(f"Erro no processamento: {str(e)}")
         return None
 
 # Função para limpar a resposta JSON
