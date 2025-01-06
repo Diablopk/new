@@ -12,12 +12,12 @@ import plotly.express as px
 # Adicionar após as importações
 MODELOS_DISPONIVEIS = {
     # Modelos Estáveis
+    "Mixtral 8x7B": "mixtral-8x7b-32768",
     "Gemma 2 9B": "gemma2-9b-it",
     "LLama 3.3 70B Versatile": "llama-3.3-70b-versatile",
     "LLama 3.1 8B Instant": "llama-3.1-8b-instant",
     "LLama 3 70B": "llama3-70b-8192",
     "LLama 3 8B": "llama3-8b-8192",
-    "Mixtral 8x7B": "mixtral-8x7b-32768",
     
     # Modelos Preview
     "LLama 3.3 70B SpecDec (Preview)": "llama-3.3-70b-specdec",
@@ -81,10 +81,11 @@ CALCULOS = {
 }
 
 def aplicar_calculos(df, coluna, calculos_selecionados):
-    """Aplica os cálculos selecionados na coluna"""
+    """Aplica os cálculos selecionados na coluna usando apenas nome da função"""
     for calculo in calculos_selecionados:
         if calculo in CALCULOS:
-            nova_coluna = f"{coluna}_{calculo}"
+            # Usar apenas o nome do cálculo como nova coluna
+            nova_coluna = f"{calculo}"
             df[nova_coluna] = CALCULOS[calculo](df[coluna])
     return df
 
