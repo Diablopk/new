@@ -42,6 +42,16 @@ if 'df' not in st.session_state:
     st.session_state.df = None
 if 'calculos_aplicados' not in st.session_state:
     st.session_state.calculos_aplicados = False
+if 'color_rules' not in st.session_state:
+    st.session_state.color_rules = {'valores': {}, 'colunas': {}}
+
+# Adicionar após a inicialização do session_state
+if 'edit_rules' not in st.session_state:
+    st.session_state.edit_rules = {
+        'deleted_cells': set(),  # Armazenar células excluídas (row, col)
+        'centered_cells': set(),  # Armazenar células centralizadas
+        'edited_cells': {}  # Armazenar texto editado {(row, col): novo_texto}
+    }
 
 # Checkbox com estado persistente
 use_yes_no = st.checkbox('Usar formato Sim/Não para listas', 
@@ -230,10 +240,33 @@ def format_header(text):
     """Formata o texto substituindo _ e - por espaço"""
     return text.replace('_', ' ').replace('-', ' ').title()
 
+def extract_color_hints(data):
+    """Extrai cores especificadas no JSON de resposta"""
+    color_hints = {}
+    try:
+        if isinstance(data, dict) and 'usuarios' in data:
+            for item in data['usuarios']:
+                for key, value in item.items():
+                    if isinstance(value, str):
+                        # Busca por padrão valor#COR
+                        if '#' in value:
+                            val, color = value.split('#', 1)
+                            if len(color) == 6 and all(c in '0123456789ABCDEF' for c in color.upper()):
+                                val = val.strip()
+                                color_hints[val] = color.upper()
+    except Exception as e:
+        st.error(f"Erro ao extrair cores: {e}")
+    return color_hints
+
 def save_data_to_excel(data, filename="relatorio.xlsx"):
     try:
-        # Converter dados para DataFrame
+        # Extrair dicas de cores do JSON
+        color_hints = extract_color_hints(data)
+        
+        # Converter dados para DataFrame, removendo os códigos de cor
         df = pd.DataFrame(data['usuarios'])
+        for col in df.columns:
+            df[col] = df[col].apply(lambda x: x.split('#')[0].strip() if isinstance(x, str) and '#' in x else x)
         
         # Formatar cabeçalhos
         df.columns = [format_header(col) for col in df.columns]
@@ -242,18 +275,93 @@ def save_data_to_excel(data, filename="relatorio.xlsx"):
         wb = openpyxl.Workbook()
         ws = wb.active
         
+        # Estilos padrão
+        header_fill = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF', size=12)
+        cell_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        cell_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+        
         # Adicionar cabeçalhos formatados
         for col_num, column_title in enumerate(df.columns, 1):
             cell = ws.cell(row=1, column=col_num)
             cell.value = format_header(column_title)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
-            cell.font = Font(bold=True, color='FFFFFF', size=12)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = cell_border
+            cell.alignment = cell_alignment
         
-        # Adicionar dados
+        # Adicionar dados com edições
         for r_idx, row in enumerate(df.values, 2):
             for c_idx, value in enumerate(row, 1):
-                ws.cell(row=r_idx, column=c_idx, value=value)
+                # Pular células excluídas
+                if (r_idx-2, df.columns[c_idx-1]) in st.session_state.edit_rules['deleted_cells']:
+                    continue
+                
+                cell = ws.cell(row=r_idx, column=c_idx)
+                
+                # Aplicar texto editado
+                if (r_idx-2, df.columns[c_idx-1]) in st.session_state.edit_rules['edited_cells']:
+                    cell.value = st.session_state.edit_rules['edited_cells'][(r_idx-2, df.columns[c_idx-1])]
+                else:
+                    cell.value = value
+                
+                # Aplicar centralização
+                if (r_idx-2, df.columns[c_idx-1]) in st.session_state.edit_rules['centered_cells']:
+                    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                else:
+                    cell.alignment = cell_alignment
+                
+                cell.border = cell_border
+                
+                # Aplicar cor apenas se especificada no JSON
+                str_value = str(value).strip()
+                if str_value in color_hints:
+                    cell.fill = PatternFill(
+                        start_color=color_hints[str_value],
+                        end_color=color_hints[str_value],
+                        fill_type='solid'
+                    )
+                elif r_idx % 2 == 0:  # Manter zebrado para melhor visualização
+                    cell.fill = PatternFill(start_color='F2F2F2', end_color='F2F2F2', fill_type='solid')
+        
+        # Ajustar largura das colunas
+        for col_num in range(1, len(df.columns) + 1):
+            col_letter = get_column_letter(col_num)
+            max_length = 0
+            
+            # Verificar comprimento do cabeçalho
+            header_cell = ws[f"{col_letter}1"]
+            if header_cell.value:
+                max_length = len(str(header_cell.value))
+            
+            # Verificar comprimento dos dados
+            for cell in ws[col_letter][1:]:
+                if cell.value:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+            
+            # Definir largura da coluna (com margem de 2 caracteres)
+            adjusted_width = max_length + 2
+            ws.column_dimensions[col_letter].width = min(adjusted_width, 50)  # limita a 50 caracteres
+        
+        # Ajustar altura das linhas
+        for row in ws.rows:
+            max_height = 0
+            for cell in row:
+                if cell.value:
+                    text_lines = str(cell.value).count('\n') + 1
+                    estimated_height = text_lines * 15  # 15 pontos por linha
+                    max_height = max(max_height, estimated_height)
+            if max_height > 0:
+                ws.row_dimensions[cell.row].height = max_height
         
         wb.save(filename)
         return filename
@@ -325,27 +433,226 @@ if user_input := st.text_area("Descreva a planilha desejada:", placeholder="Exem
             except Exception as e:
                 st.error(f"Ocorreu um erro: {e}")
 
-# Modificar a seção de cálculos e download
+# Modificar apenas a seção de interface após a geração da planilha
 if st.session_state.df is not None:
     st.write("### Preview dos Dados Originais:")
-    st.dataframe(st.session_state.df)
+    st.dataframe(st.session_state.df, key="df_preview_original")
     
+    st.write("### Opções de Formatação")
+    with st.expander("Personalizar Cores das Células"):
+        st.write("Selecione valores e cores para destacar na planilha")
+        
+        # Opção de colorir valor específico ou coluna inteira
+        modo_cor = st.radio(
+            "Modo de coloração:",
+            ["Valor específico", "Coluna inteira"],
+            key="modo_cor_radio"
+        )
+        
+        # Obter valores únicos de todas as colunas
+        valores_unicos = {}
+        for col in st.session_state.df.columns:
+            valores_unicos[col] = st.session_state.df[col].unique().tolist()
+        
+        # Interface para adicionar cores
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            coluna_selecionada = st.selectbox(
+                "Selecione a coluna:",
+                list(valores_unicos.keys()),
+                key="coluna_selector_formatacao"
+            )
+        with col2:
+            if modo_cor == "Valor específico":
+                valor_selecionado = st.selectbox(
+                    "Selecione o valor:",
+                    [str(v) for v in valores_unicos[coluna_selecionada]],
+                    key="valor_selector_formatacao"
+                )
+        with col3:
+            cor_selecionada = st.color_picker(
+                "Escolha a cor:",
+                "#FFFFFF",
+                key="cor_picker_formatacao"
+            )
+        
+        # Botão para adicionar cor
+        if st.button("Adicionar Cor", key="btn_add_cor_formatacao"):
+            if modo_cor == "Valor específico":
+                st.session_state.color_rules['valores'][valor_selecionado] = cor_selecionada.replace('#', '')
+                st.success(f"Cor aplicada ao valor: {valor_selecionado}")
+            else:
+                st.session_state.color_rules['colunas'][coluna_selecionada] = cor_selecionada.replace('#', '')
+                st.success(f"Cor aplicada à coluna: {coluna_selecionada}")
+        
+        # Preview com cores aplicadas
+        if st.session_state.color_rules['valores'] or st.session_state.color_rules['colunas']:
+            st.write("### Preview com Cores:")
+            df_preview = st.session_state.df.copy()
+            
+            def highlight_cells(x):
+                styles = pd.DataFrame('', index=x.index, columns=x.columns)
+                for valor, cor in st.session_state.color_rules['valores'].items():
+                    for col in x.columns:
+                        mask = x[col].astype(str) == valor
+                        styles.loc[mask, col] = f'background-color: #{cor}'
+                for coluna, cor in st.session_state.color_rules['colunas'].items():
+                    styles[coluna] = f'background-color: #{cor}'
+                return styles
+            
+            st.dataframe(df_preview.style.apply(highlight_cells, axis=None), key="df_preview_cores")
+            
+            if st.button("Limpar Todas as Cores", key="btn_limpar_cores_formatacao"):
+                st.session_state.color_rules = {'valores': {}, 'colunas': {}}
+                st.success("Todas as cores foram removidas")
+
+    # Adicionar nova seção de edição
+    st.write("### Opções de Edição")
+    with st.expander("Editar Células"):
+        st.write("Selecione células para editar, centralizar ou excluir")
+        
+        edit_tab1, edit_tab2, edit_tab3 = st.tabs(["Editar Texto", "Centralizar", "Excluir"])
+        
+        with edit_tab1:
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                edit_col = st.selectbox(
+                    "Selecione a coluna:",
+                    st.session_state.df.columns,
+                    key="edit_col_selector"
+                )
+            with col2:
+                edit_row = st.number_input(
+                    "Selecione a linha (0 = todas):",
+                    min_value=0,
+                    max_value=len(st.session_state.df),
+                    key="edit_row_input"
+                )
+            with col3:
+                novo_texto = st.text_input(
+                    "Novo texto:",
+                    key="edit_text_input"
+                )
+            
+            if st.button("Aplicar Edição", key="btn_apply_edit"):
+                if edit_row == 0:  # Aplicar em toda a coluna
+                    for idx in st.session_state.df.index:
+                        st.session_state.edit_rules['edited_cells'][(idx, edit_col)] = novo_texto
+                else:
+                    st.session_state.edit_rules['edited_cells'][(edit_row-1, edit_col)] = novo_texto
+                st.success("Texto editado com sucesso!")
+        
+        with edit_tab2:
+            col1, col2 = st.columns(2)
+            with col1:
+                center_col = st.selectbox(
+                    "Selecione a coluna:",
+                    st.session_state.df.columns,
+                    key="center_col_selector"
+                )
+            with col2:
+                center_row = st.number_input(
+                    "Selecione a linha (0 = todas):",
+                    min_value=0,
+                    max_value=len(st.session_state.df),
+                    key="center_row_input"
+                )
+            
+            if st.button("Centralizar", key="btn_center"):
+                if center_row == 0:
+                    for idx in st.session_state.df.index:
+                        st.session_state.edit_rules['centered_cells'].add((idx, center_col))
+                else:
+                    st.session_state.edit_rules['centered_cells'].add((center_row-1, center_col))
+                st.success("Células centralizadas!")
+        
+        with edit_tab3:
+            col1, col2 = st.columns(2)
+            with col1:
+                del_col = st.selectbox(
+                    "Selecione a coluna:",
+                    st.session_state.df.columns,
+                    key="del_col_selector"
+                )
+            with col2:
+                del_row = st.number_input(
+                    "Selecione a linha (0 = todas):",
+                    min_value=0,
+                    max_value=len(st.session_state.df),
+                    key="del_row_input"
+                )
+            
+            if st.button("Excluir Célula(s)", key="btn_delete"):
+                if del_row == 0:
+                    for idx in st.session_state.df.index:
+                        st.session_state.edit_rules['deleted_cells'].add((idx, del_col))
+                else:
+                    st.session_state.edit_rules['deleted_cells'].add((del_row-1, del_col))
+                st.success("Células excluídas!")
+        
+        if st.button("Limpar Todas as Edições", key="btn_clear_edits"):
+            st.session_state.edit_rules = {
+                'deleted_cells': set(),
+                'centered_cells': set(),
+                'edited_cells': {}
+            }
+            st.success("Todas as edições foram removidas!")
+
+        # Preview com edições
+        if any(rules for rules in st.session_state.edit_rules.values()):
+            st.write("### Preview com Edições:")
+            df_preview = st.session_state.df.copy()
+            
+            def highlight_edits(x):
+                styles = pd.DataFrame('', index=x.index, columns=x.columns)
+                
+                for (row, col) in st.session_state.edit_rules['deleted_cells']:
+                    styles.iloc[row, df_preview.columns.get_loc(col)] = 'background-color: #FFE6E6'
+                
+                for (row, col) in st.session_state.edit_rules['centered_cells']:
+                    styles.iloc[row, df_preview.columns.get_loc(col)] = 'text-align: center'
+                
+                return styles
+            
+            # Aplicar edições de texto para preview
+            for (row, col), texto in st.session_state.edit_rules['edited_cells'].items():
+                df_preview.iloc[row, df_preview.columns.get_loc(col)] = texto
+            
+            st.dataframe(df_preview.style.apply(highlight_edits, axis=None), key="df_preview_edits")
+
+    # Opções de Download - Remover seção duplicada e manter apenas esta
     st.write("### Opções de Download")
     download_option = st.radio(
         "Escolha uma opção:",
-        ["Baixar planilha original", "Aplicar cálculos e baixar"]
+        ["Baixar planilha original", "Aplicar cálculos e baixar"],
+        key="download_option_radio_unico"
     )
     
     if download_option == "Baixar planilha original":
-        if st.button("Baixar Planilha Original"):
-            filename = save_data_to_excel({'usuarios': st.session_state.df.to_dict('records')})
+        if st.button("Baixar Planilha"):
+            # Criar cópia dos dados para aplicar cores
+            data_with_colors = {'usuarios': st.session_state.df.to_dict('records')}
+            
+            # Aplicar cores definidas pelo usuário
+            if 'color_rules' in st.session_state:
+                for record in data_with_colors['usuarios']:
+                    for key, value in record.items():
+                        str_value = str(value)
+                        # Aplicar cores por valor
+                        if str_value in st.session_state.color_rules['valores']:
+                            record[key] = f"{value}#{st.session_state.color_rules['valores'][str_value]}"
+                        # Aplicar cores por coluna
+                        elif key in st.session_state.color_rules['colunas']:
+                            record[key] = f"{value}#{st.session_state.color_rules['colunas'][key]}"
+            
+            filename = save_data_to_excel(data_with_colors)
             if filename:
                 with open(filename, "rb") as f:
                     bytes_data = f.read()
                 st.download_button(
                     "Download Excel",
                     bytes_data,
-                    file_name="planilha_original.xlsx",
+                    file_name="planilha_formatada.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
     else:
