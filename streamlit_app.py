@@ -18,6 +18,7 @@ MODELOS_DISPONIVEIS = {
     "LLama 3.1 8B Instant": "llama-3.1-8b-instant",
     "LLama 3 70B": "llama3-70b-8192",
     "LLama 3 8B": "llama3-8b-8192",
+"Deepseek-r1": "deepseek-r1-distill-llama-70b",
     
     # Modelos Preview
     "LLama 3.3 70B SpecDec (Preview)": "llama-3.3-70b-specdec",
