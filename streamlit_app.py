@@ -9,23 +9,136 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import plotly.express as px
 
-# Adicionar após as importações
+# Configuração do tema dark personalizado
+st.set_page_config(page_title="Gerador de Planilhas", layout="wide")
+
+# Aplicar tema escuro personalizado
+st.markdown("""
+    <style>
+        /* Tema escuro principal */
+        .stApp {
+            background: linear-gradient(180deg, #0A0C10 0%, #141621 100%);
+            color: #C9D1D9;
+        }
+        
+        /* Sidebar */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #161B22 0%, #1C2128 100%);
+            border-right: 1px solid #30363D;
+        }
+        
+        /* Headers */
+        h1, h2, h3 {
+            color: #58A6FF !important;
+            font-weight: 600;
+        }
+        
+        /* Botões */
+        .stButton > button {
+            background: linear-gradient(180deg, #238636 0%, #2EA043 100%) !important;
+            color: white !important;
+            border: 1px solid #238636 !important;
+            border-radius: 6px !important;
+            padding: 0.5rem 1rem !important;
+            font-weight: 600 !important;
+            transition: all 0.2s !important;
+        }
+        .stButton > button:hover {
+            background: linear-gradient(180deg, #2EA043 0%, #3FB950 100%) !important;
+            border-color: #3FB950 !important;
+            box-shadow: 0 0 10px rgba(46, 160, 67, 0.4) !important;
+        }
+        
+        /* Inputs e Selectbox */
+        .stTextInput > div > div,
+        .stSelectbox > div > div,
+        .stTextArea > div > div {
+            background-color: #0D1117 !important;
+            color: #C9D1D9 !important;
+            border: 1px solid #30363D !important;
+            border-radius: 6px !important;
+        }
+        
+        /* DataFrame */
+        .stDataFrame {
+            background-color: #0D1117 !important;
+            border: 1px solid #30363D !important;
+            border-radius: 6px !important;
+        }
+        .dataframe {
+            color: #C9D1D9 !important;
+        }
+        
+        /* Chat messages */
+        .stSuccess {
+            background-color: #0D1117 !important;
+            color: #7CE38B !important;
+            border: 1px solid #238636 !important;
+            border-radius: 6px !important;
+        }
+        .stError {
+            background-color: #0D1117 !important;
+            color: #FF7B72 !important;
+            border: 1px solid #F85149 !important;
+        }
+        .stInfo {
+            background-color: #0D1117 !important;
+            color: #58A6FF !important;
+            border: 1px solid #1F6FEB !important;
+        }
+        
+        /* Expander */
+        .streamlit-expanderHeader {
+            background-color: #161B22 !important;
+            color: #58A6FF !important;
+            border: 1px solid #30363D !important;
+        }
+        
+        /* Métricas */
+        [data-testid="stMetricValue"] {
+            background-color: #161B22 !important;
+            color: #7CE38B !important;
+            font-weight: 600 !important;
+            padding: 1rem !important;
+            border-radius: 6px !important;
+            border: 1px solid #238636 !important;
+        }
+        
+        /* Separadores */
+        hr {
+            border-color: #30363D !important;
+        }
+        
+        /* Radio e Checkbox */
+        .stRadio > label,
+        .stCheckbox > label {
+            color: #C9D1D9 !important;
+        }
+        
+        /* Tooltips e hints */
+        .stTooltipIcon {
+            color: #58A6FF !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# Atualizar MODELOS_DISPONIVEIS com emojis mais apropriados
 MODELOS_DISPONIVEIS = {
     # Modelos Estáveis
-    "LLama 3.3 70B Versatile": "llama-3.3-70b-versatile",
-    "Mixtral 8x7B": "mixtral-8x7b-32768",
-    "Gemma 2 9B": "gemma2-9b-it",
-    "LLama 3.1 8B Instant": "llama-3.1-8b-instant",
-    "LLama 3 70B": "llama3-70b-8192",
-    "LLama 3 8B": "llama3-8b-8192",
-"Deepseek-r1": "deepseek-r1-distill-llama-70b",
+    "⚡ LLama 3.3 70B Versatile": "llama-3.3-70b-versatile",
+    "🐋 Deepseek-r1": "deepseek-r1-distill-llama-70b",
+    "🚀 Mixtral 8x7B": "mixtral-8x7b-32768",
+    "💫 Gemma 2 9B": "gemma2-9b-it",
+    "⭐ LLama 3.1 8B Instant": "llama-3.1-8b-instant",
+    "🌟 LLama 3 70B": "llama3-70b-8192",
+    "✨ LLama 3 8B": "llama3-8b-8192",
     
     # Modelos Preview
-    "LLama 3.3 70B SpecDec (Preview)": "llama-3.3-70b-specdec",
-    "LLama 3.2 1B (Preview)": "llama-3.2-1b-preview",
-    "LLama 3.2 3B (Preview)": "llama-3.2-3b-preview",
-    "LLama 3.2 11B Vision (Preview)": "llama-3.2-11b-vision-preview",
-    "LLama 3.2 90B Vision (Preview)": "llama-3.2-90b-vision-preview"
+    "🔮 LLama 3.3 70B SpecDec (Preview)": "llama-3.3-70b-specdec",
+    "💎 LLama 3.2 1B (Preview)": "llama-3.2-1b-preview",
+    "🌠 LLama 3.2 3B (Preview)": "llama-3.2-3b-preview",
+    "✨ LLama 3.2 11B Vision (Preview)": "llama-3.2-11b-vision-preview",
+    "⚡ LLama 3.2 90B Vision (Preview)": "llama-3.2-90b-vision-preview"
 }
 
 # Configuração da API Groq
@@ -50,9 +163,17 @@ if 'color_rules' not in st.session_state:
 if 'edit_rules' not in st.session_state:
     st.session_state.edit_rules = {
         'deleted_cells': set(),  # Armazenar células excluídas (row, col)
-        'centered_cells': set(),  # Armazenar células centralizadas
+        'centered_cells': dict(),  # Modificado para dict para armazenar tipo de alinhamento
         'edited_cells': {}  # Armazenar texto editado {(row, col): novo_texto}
     }
+
+# Adicionar após a inicialização do session_state
+if 'headers_edit' not in st.session_state:
+    st.session_state.headers_edit = {}
+
+# Adicionar após a inicialização do session_state
+if 'chat_messages' not in st.session_state:
+    st.session_state.chat_messages = []
 
 # Checkbox com estado persistente
 use_yes_no = st.checkbox('Usar formato Sim/Não para listas', 
@@ -79,6 +200,81 @@ modelo_selecionado = st.sidebar.selectbox(
     index=0
 )
 
+# Substituir a seção do chat
+st.sidebar.write("---")
+st.sidebar.write("### Chat com o Modelo")
+
+with st.sidebar:
+    # Área fixa para o chat com altura máxima
+    chat_area = st.container()
+    chat_area.markdown("""
+        <style>
+            div.stContainer { max-height: 400px; overflow-y: auto; }
+            div.stMarkdown { margin-bottom: 10px; }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    with chat_area:
+        # Mostrar mensagens
+        for msg in st.session_state.chat_messages:
+            if msg["role"] == "user":
+                st.info(f"**Você**: {msg['content']}")
+            else:
+                st.success(f"**Assistente**: {msg['content']}")
+    
+    # Campo de entrada fixo na parte inferior
+    with st.container():
+        if "temp_input" not in st.session_state:
+            st.session_state.temp_input = ""
+            
+        input_text = st.text_area(
+            "Digite sua mensagem:",
+            key="user_input",
+            height=100
+        )
+        
+        col1, col2 = st.columns([3,1])
+        
+        with col1:
+            if st.button("Enviar", use_container_width=True):
+                if input_text.strip():
+                    # Adiciona mensagem do usuário
+                    st.session_state.chat_messages.append({
+                        "role": "user",
+                        "content": input_text
+                    })
+                    
+                    try:
+                        with st.spinner("Processando..."):
+                            response = client.chat.completions.create(
+                                model=MODELOS_DISPONIVEIS[modelo_selecionado],
+                                messages=[
+                                    {"role": "system", "content": "Você deve sempre responder em português do Brasil."},
+                                    {"role": "user", "content": input_text}
+                                ],
+                                temperature=0.7,
+                                max_tokens=1000
+                            )
+                            
+                            # Adiciona resposta do assistente
+                            st.session_state.chat_messages.append({
+                                "role": "assistant",
+                                "content": response.choices[0].message.content
+                            })
+                            
+                            # Limpa o campo de entrada
+                            st.session_state.temp_input = ""
+                            st.rerun()
+                            
+                    except Exception as e:
+                        st.error(f"Erro: {str(e)}")
+        
+        with col2:
+            if st.button("Limpar", use_container_width=True):
+                st.session_state.chat_messages = []
+                st.session_state.temp_input = ""
+                st.rerun()
+
 # Definir funções de cálculo disponíveis
 CALCULOS = {
     'Média': lambda x: x.mean(),
@@ -103,6 +299,7 @@ def aplicar_calculos(df, coluna, calculos_selecionados):
 def process_prompt_to_data(prompt, use_yes_no):
     try:
         formatted_prompt = f"""
+        Por favor, responda em português.
         Gere um JSON válido contendo uma lista de objetos para uma tabela.
         O JSON deve ter apenas uma chave principal contendo um array de objetos.
         Exemplo: {{"dados": [{{"coluna1": "valor1", "coluna2": ["item1", "item2"]}}]}}
@@ -125,7 +322,7 @@ def process_prompt_to_data(prompt, use_yes_no):
         # Encontrar primeira chave com array
         main_key = next((k for k, v in data.items() if isinstance(v, list)), None)
         
-        if main_key:
+        if (main_key):
             normalized_data = {"usuarios": data[main_key]}
             
             # Aplicar conversão Sim/Não se necessário
@@ -261,16 +458,12 @@ def extract_color_hints(data):
 
 def save_data_to_excel(data, filename="relatorio.xlsx"):
     try:
-        # Extrair dicas de cores do JSON
-        color_hints = extract_color_hints(data)
-        
-        # Converter dados para DataFrame, removendo os códigos de cor
+        # Converter dados para DataFrame
         df = pd.DataFrame(data['usuarios'])
-        for col in df.columns:
-            df[col] = df[col].apply(lambda x: x.split('#')[0].strip() if isinstance(x, str) and '#' in x else x)
         
-        # Formatar cabeçalhos
-        df.columns = [format_header(col) for col in df.columns]
+        # Aplicar edições de cabeçalhos
+        if st.session_state.headers_edit:
+            df = df.rename(columns=st.session_state.headers_edit)
         
         # Criar workbook
         wb = openpyxl.Workbook()
@@ -296,7 +489,7 @@ def save_data_to_excel(data, filename="relatorio.xlsx"):
             cell.border = cell_border
             cell.alignment = cell_alignment
         
-        # Adicionar dados com edições
+        # Adicionar dados com edições e cores
         for r_idx, row in enumerate(df.values, 2):
             for c_idx, value in enumerate(row, 1):
                 # Pular células excluídas
@@ -304,30 +497,38 @@ def save_data_to_excel(data, filename="relatorio.xlsx"):
                     continue
                 
                 cell = ws.cell(row=r_idx, column=c_idx)
+                coluna_atual = df.columns[c_idx-1]
                 
                 # Aplicar texto editado
-                if (r_idx-2, df.columns[c_idx-1]) in st.session_state.edit_rules['edited_cells']:
-                    cell.value = st.session_state.edit_rules['edited_cells'][(r_idx-2, df.columns[c_idx-1])]
+                if (r_idx-2, coluna_atual) in st.session_state.edit_rules['edited_cells']:
+                    cell.value = st.session_state.edit_rules['edited_cells'][(r_idx-2, coluna_atual)]
                 else:
                     cell.value = value
                 
-                # Aplicar centralização
-                if (r_idx-2, df.columns[c_idx-1]) in st.session_state.edit_rules['centered_cells']:
+                # Aplicar alinhamento
+                align_type = st.session_state.edit_rules['centered_cells'].get((r_idx-2, coluna_atual), "Esquerda")
+                if align_type == "Centro":
                     cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                elif align_type == "Direita":
+                    cell.alignment = Alignment(horizontal='right', vertical='center', wrap_text=True)
                 else:
-                    cell.alignment = cell_alignment
+                    cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
                 
                 cell.border = cell_border
                 
-                # Aplicar cor apenas se especificada no JSON
-                str_value = str(value).strip()
-                if str_value in color_hints:
-                    cell.fill = PatternFill(
-                        start_color=color_hints[str_value],
-                        end_color=color_hints[str_value],
-                        fill_type='solid'
-                    )
-                elif r_idx % 2 == 0:  # Manter zebrado para melhor visualização
+                # Aplicar cores das regras
+                valor_str = str(value).strip()
+                
+                # Verificar cores por valor
+                if valor_str in st.session_state.color_rules['valores']:
+                    cor = st.session_state.color_rules['valores'][valor_str]
+                    cell.fill = PatternFill(start_color=cor, end_color=cor, fill_type='solid')
+                # Verificar cores por coluna
+                elif coluna_atual in st.session_state.color_rules['colunas']:
+                    cor = st.session_state.color_rules['colunas'][coluna_atual]
+                    cell.fill = PatternFill(start_color=cor, end_color=cor, fill_type='solid')
+                # Manter zebrado para células sem cor específica
+                elif r_idx % 2 == 0:
                     cell.fill = PatternFill(start_color='F2F2F2', end_color='F2F2F2', fill_type='solid')
         
         # Ajustar largura das colunas
@@ -380,7 +581,6 @@ def extract_numeric_columns(data):
     return data.select_dtypes(include=['int64', 'float64']).columns.tolist()
 
 # Configura interface com Streamlit
-st.title("Assistente de Criação de Planilhas")
 st.write("Descreva a planilha que deseja criar e eu cuidarei do resto!")
 
 def analyze_numeric_data(data):
@@ -420,8 +620,15 @@ def analyze_numeric_data(data):
     except Exception as e:
         st.error(f"Erro na análise: {str(e)}")
 
-if user_input := st.text_area("Descreva a planilha desejada:", placeholder="Exemplo: Crie uma tabela com nomes, idades e cidades"):
-    if st.button("Gerar Planilha"):
+# Substituir a seção do input por:
+user_input = st.text_area(
+    "Descreva a planilha desejada:",
+    placeholder="Exemplo: Crie uma tabela com nomes, idades e cidades",
+    height=150  # Define altura do campo em pixels
+)
+
+if st.button("Gerar Planilha", key="btn_gerar"):
+    if user_input:
         with st.spinner("Processando..."):
             try:
                 use_yes_no = st.session_state.use_yes_no
@@ -433,252 +640,264 @@ if user_input := st.text_area("Descreva a planilha desejada:", placeholder="Exem
                     st.success("Planilha gerada com sucesso!")
             except Exception as e:
                 st.error(f"Ocorreu um erro: {e}")
+    else:
+        st.warning("Por favor, digite uma descrição para a planilha")
 
-# Modificar apenas a seção de interface após a geração da planilha
-if st.session_state.df is not None:
-    st.write("### Preview dos Dados Originais:")
-    st.dataframe(st.session_state.df, key="df_preview_original")
+# Modificar a função que mostra o preview dos dados
+def apply_all_edits_to_df(df):
+    """Aplica todas as edições ao DataFrame para preview"""
+    df_edited = df.copy()
     
-    st.write("### Opções de Formatação")
-    with st.expander("Personalizar Cores das Células"):
-        st.write("Selecione valores e cores para destacar na planilha")
+    # Aplicar edições de cabeçalhos
+    if st.session_state.headers_edit:
+        df_edited = df_edited.rename(columns=st.session_state.headers_edit)
+    
+    # Aplicar edições de texto
+    for (idx, col), new_text in st.session_state.edit_rules['edited_cells'].items():
+        if col in df_edited.columns and idx < len(df_edited):
+            df_edited.loc[idx, col] = new_text
+    
+    # Formatar números para exibição
+    numeric_cols = df_edited.select_dtypes(include=['float64']).columns
+    for col in numeric_cols:
+        df_edited[col] = df_edited[col].apply(lambda x: f"{x:.1f}")
+    
+    # Aplicar cores (usando styler)
+    def highlight_cells(x):
+        styles = pd.DataFrame('', index=x.index, columns=x.columns)
         
-        # Opção de colorir valor específico ou coluna inteira
-        modo_cor = st.radio(
-            "Modo de coloração:",
-            ["Valor específico", "Coluna inteira"],
-            key="modo_cor_radio"
-        )
+        # Aplicar alinhamentos
+        for (idx, col), align in st.session_state.edit_rules['centered_cells'].items():
+            if col in x.columns and idx < len(x):
+                style_text = ""
+                if align == "Centro":
+                    style_text = "text-align: center;"
+                elif align == "Direita":
+                    style_text = "text-align: right;"
+                elif align == "Esquerda":
+                    style_text = "text-align: left;"
+                
+                if style_text:
+                    current_style = styles.loc[idx, col]
+                    styles.loc[idx, col] = f"{current_style} {style_text}".strip()
         
-        # Obter valores únicos de todas as colunas
-        valores_unicos = {}
-        for col in st.session_state.df.columns:
-            valores_unicos[col] = st.session_state.df[col].unique().tolist()
+        # Cores por valor
+        for val, cor in st.session_state.color_rules['valores'].items():
+            mask = x.astype(str) == val
+            styles = styles.mask(mask, f'background-color: #{cor}')
         
-        # Interface para adicionar cores
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            coluna_selecionada = st.selectbox(
-                "Selecione a coluna:",
-                list(valores_unicos.keys()),
-                key="coluna_selector_formatacao"
-            )
-        with col2:
-            if modo_cor == "Valor específico":
-                valor_selecionado = st.selectbox(
-                    "Selecione o valor:",
-                    [str(v) for v in valores_unicos[coluna_selecionada]],
-                    key="valor_selector_formatacao"
-                )
-        with col3:
-            cor_selecionada = st.color_picker(
-                "Escolha a cor:",
-                "#FFFFFF",
-                key="cor_picker_formatacao"
-            )
-        
-        # Botão para adicionar cor
-        if st.button("Adicionar Cor", key="btn_add_cor_formatacao"):
-            if modo_cor == "Valor específico":
-                st.session_state.color_rules['valores'][valor_selecionado] = cor_selecionada.replace('#', '')
-                st.success(f"Cor aplicada ao valor: {valor_selecionado}")
-            else:
-                st.session_state.color_rules['colunas'][coluna_selecionada] = cor_selecionada.replace('#', '')
-                st.success(f"Cor aplicada à coluna: {coluna_selecionada}")
-        
-        # Preview com cores aplicadas
-        if st.session_state.color_rules['valores'] or st.session_state.color_rules['colunas']:
-            st.write("### Preview com Cores:")
-            df_preview = st.session_state.df.copy()
+        # Cores por coluna
+        for col, cor in st.session_state.color_rules['colunas'].items():
+            if col in x.columns:
+                styles[col] = f'background-color: #{cor}'
             
-            def highlight_cells(x):
-                styles = pd.DataFrame('', index=x.index, columns=x.columns)
-                for valor, cor in st.session_state.color_rules['valores'].items():
-                    for col in x.columns:
-                        mask = x[col].astype(str) == valor
-                        styles.loc[mask, col] = f'background-color: #{cor}'
-                for coluna, cor in st.session_state.color_rules['colunas'].items():
-                    styles[coluna] = f'background-color: #{cor}'
-                return styles
-            
-            st.dataframe(df_preview.style.apply(highlight_cells, axis=None), key="df_preview_cores")
-            
-            if st.button("Limpar Todas as Cores", key="btn_limpar_cores_formatacao"):
-                st.session_state.color_rules = {'valores': {}, 'colunas': {}}
-                st.success("Todas as cores foram removidas")
+        return styles
+    
+    # Remover células excluídas
+    for idx, col in st.session_state.edit_rules['deleted_cells']:
+        if col in df_edited.columns and idx < len(df_edited):
+            df_edited.loc[idx, col] = None
+        
+    return df_edited.style.apply(highlight_cells, axis=None)
 
-    # Adicionar nova seção de edição
-    st.write("### Opções de Edição")
-    with st.expander("Editar Células"):
-        st.write("Selecione células para editar, centralizar ou excluir")
-        
-        edit_tab1, edit_tab2, edit_tab3 = st.tabs(["Editar Texto", "Centralizar", "Excluir"])
-        
-        with edit_tab1:
+# Modificar a seção após gerar a planilha
+if st.session_state.df is not None:
+    # Mostrar preview da planilha original
+    st.write("### Planilha Original")
+    st.dataframe(st.session_state.df, use_container_width=True)
+    
+    st.write("---")  # Separador visual
+    
+    # Seção de edições
+    st.write("### Edição da Planilha")
+    
+    # Adicionar opção para escolher entre dados originais ou com cálculos
+    modo_visualizacao = st.radio(
+        "Selecione o modo de visualização:",
+        ["Dados Originais", "Aplicar Cálculos"],
+        key="modo_visualizacao"
+    )
+    
+    df_atual = st.session_state.df.copy()
+    
+    if modo_visualizacao == "Aplicar Cálculos":
+        colunas_numericas = df_atual.select_dtypes(include=['int64', 'float64']).columns
+        if len(colunas_numericas) > 0:
+            coluna_calculo = st.selectbox("Selecione a coluna para cálculos:", colunas_numericas)
+            calculos_selecionados = st.multiselect("Selecione os cálculos:", list(CALCULOS.keys()))
+            
+            if calculos_selecionados:
+                df_atual = aplicar_calculos(df_atual, coluna_calculo, calculos_selecionados)
+                st.success("Cálculos aplicados com sucesso!")
+        else:
+            st.warning("Não há colunas numéricas disponíveis para cálculos")
+
+    # Menu unificado de edição
+    st.write("### Ferramentas de Edição")
+    tool_menu = st.selectbox(
+        "Selecione a ferramenta:",
+        ["Formatação de Cores", "Edição de Células", "Edição de Cabeçalhos", "Centralização", "Exclusão de Células"]
+    )
+    
+    with st.expander("Editor de Planilha", expanded=True):
+        if tool_menu == "Edição de Cabeçalhos":
+            st.write("### Editar Cabeçalhos das Colunas")
+            
+            # Interface de edição de cabeçalhos
+            for col in df_atual.columns:
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    novo_header = st.text_input(
+                        f"Novo nome para '{col}':",
+                        value=st.session_state.headers_edit.get(col, col),
+                        key=f"header_{col}"
+                    )
+                with col2:
+                    if st.button("Aplicar", key=f"btn_header_{col}"):
+                        if novo_header and novo_header != col:
+                            st.session_state.headers_edit[col] = novo_header
+                            st.success(f"Cabeçalho '{col}' alterado para '{novo_header}'")
+                            st.rerun()
+            
+            if st.button("Limpar Edições de Cabeçalhos"):
+                st.session_state.headers_edit = {}
+                st.success("Edições de cabeçalhos removidas")
+                st.rerun()
+
+        elif tool_menu == "Formatação de Cores":
+            # Interface de cores
+            modo_cor = st.radio(
+                "Modo de coloração:",
+                ["Valor específico", "Coluna inteira"]
+            )
+            
             col1, col2, col3 = st.columns(3)
             with col1:
-                edit_col = st.selectbox(
-                    "Selecione a coluna:",
-                    st.session_state.df.columns,
-                    key="edit_col_selector"
-                )
+                coluna_selecionada = st.selectbox("Coluna:", df_atual.columns)
             with col2:
-                edit_row = st.number_input(
-                    "Selecione a linha (0 = todas):",
-                    min_value=0,
-                    max_value=len(st.session_state.df),
-                    key="edit_row_input"
-                )
+                if modo_cor == "Valor específico":
+                    valores_unicos = df_atual[coluna_selecionada].unique()
+                    valor_selecionado = st.selectbox("Valor:", [str(v) for v in valores_unicos])
             with col3:
-                novo_texto = st.text_input(
-                    "Novo texto:",
-                    key="edit_text_input"
-                )
+                cor_selecionada = st.color_picker("Cor:", "#FFFFFF")
             
-            if st.button("Aplicar Edição", key="btn_apply_edit"):
-                if edit_row == 0:  # Aplicar em toda a coluna
-                    for idx in st.session_state.df.index:
+            if st.button("Aplicar Cor"):
+                if modo_cor == "Valor específico":
+                    st.session_state.color_rules['valores'][str(valor_selecionado)] = cor_selecionada.replace('#', '')
+                else:
+                    st.session_state.color_rules['colunas'][coluna_selecionada] = cor_selecionada.replace('#', '')
+                st.success("Cor aplicada!")
+                st.rerun()  # Força atualização do preview
+
+        elif tool_menu == "Edição de Células":
+            # Interface de edição
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                edit_col = st.selectbox("Coluna para editar:", df_atual.columns)
+            with col2:
+                edit_row = st.number_input("Linha (0 = todas):", 0, len(df_atual))
+            with col3:
+                novo_texto = st.text_input("Novo texto:")
+            
+            if st.button("Aplicar Edição"):
+                if edit_row == 0:
+                    for idx in df_atual.index:
                         st.session_state.edit_rules['edited_cells'][(idx, edit_col)] = novo_texto
                 else:
                     st.session_state.edit_rules['edited_cells'][(edit_row-1, edit_col)] = novo_texto
-                st.success("Texto editado com sucesso!")
-        
-        with edit_tab2:
+                st.success("Edição aplicada!")
+                
+        elif tool_menu == "Centralização":
+            # Interface de alinhamento
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                align_col = st.selectbox("Coluna para alinhar:", df_atual.columns)
+            with col2:
+                align_row = st.number_input("Linha (0 = todas):", 0, len(df_atual))
+            with col3:
+                alinhamento = st.selectbox(
+                    "Tipo de alinhamento:",
+                    ["Esquerda", "Centro", "Direita"]
+                )
+            
+            if st.button("Aplicar Alinhamento"):
+                if align_row == 0:
+                    for idx in df_atual.index:
+                        st.session_state.edit_rules['centered_cells'][(idx, align_col)] = alinhamento
+                else:
+                    st.session_state.edit_rules['centered_cells'][(align_row-1, align_col)] = alinhamento
+                st.success(f"Alinhamento {alinhamento.lower()} aplicado!")
+                st.rerun()
+                
+        elif tool_menu == "Exclusão de Células":
+            # Interface de exclusão
             col1, col2 = st.columns(2)
             with col1:
-                center_col = st.selectbox(
-                    "Selecione a coluna:",
-                    st.session_state.df.columns,
-                    key="center_col_selector"
-                )
-            with col2:
-                center_row = st.number_input(
-                    "Selecione a linha (0 = todas):",
-                    min_value=0,
-                    max_value=len(st.session_state.df),
-                    key="center_row_input"
-                )
+                del_col = st.selectbox("Coluna para excluir:", df_atual.columns)
             
-            if st.button("Centralizar", key="btn_center"):
-                if center_row == 0:
-                    for idx in st.session_state.df.index:
-                        st.session_state.edit_rules['centered_cells'].add((idx, center_col))
-                else:
-                    st.session_state.edit_rules['centered_cells'].add((center_row-1, center_col))
-                st.success("Células centralizadas!")
-        
-        with edit_tab3:
-            col1, col2 = st.columns(2)
-            with col1:
-                del_col = st.selectbox(
-                    "Selecione a coluna:",
-                    st.session_state.df.columns,
-                    key="del_col_selector"
-                )
-            with col2:
-                del_row = st.number_input(
-                    "Selecione a linha (0 = todas):",
-                    min_value=0,
-                    max_value=len(st.session_state.df),
-                    key="del_row_input"
-                )
+            modo_exclusao = st.radio(
+                "Modo de exclusão:",
+                ["Excluir linha específica", "Excluir coluna inteira com exceções"]
+            )
             
-            if st.button("Excluir Célula(s)", key="btn_delete"):
-                if del_row == 0:
-                    for idx in st.session_state.df.index:
-                        st.session_state.edit_rules['deleted_cells'].add((idx, del_col))
-                else:
-                    st.session_state.edit_rules['deleted_cells'].add((del_row-1, del_col))
-                st.success("Células excluídas!")
-        
-        if st.button("Limpar Todas as Edições", key="btn_clear_edits"):
-            st.session_state.edit_rules = {
-                'deleted_cells': set(),
-                'centered_cells': set(),
-                'edited_cells': {}
-            }
-            st.success("Todas as edições foram removidas!")
+            if modo_exclusao == "Excluir linha específica":
+                with col2:
+                    del_row = st.number_input("Linha (0 = todas):", 0, len(df_atual))
+                
+                if st.button("Excluir"):
+                    if del_row == 0:
+                        for idx in df_atual.index:
+                            st.session_state.edit_rules['deleted_cells'].add((idx, del_col))
+                    else:
+                        st.session_state.edit_rules['deleted_cells'].add((del_row-1, del_col))
+                    st.success("Exclusão aplicada!")
+            
+            else:  # Excluir coluna inteira com exceções
+                # Mostrar valores da coluna
+                valores_coluna = df_atual[del_col].unique()
+                linhas_manter = st.multiselect(
+                    "Selecione as linhas que NÃO deseja excluir:",
+                    range(len(df_atual)),
+                    format_func=lambda x: f"Linha {x+1}: {df_atual.iloc[x][del_col]}"
+                )
+                
+                if st.button("Aplicar Exclusão"):
+                    # Excluir toda a coluna exceto as linhas selecionadas
+                    for idx in df_atual.index:
+                        if idx not in linhas_manter:
+                            st.session_state.edit_rules['deleted_cells'].add((idx, del_col))
+                    st.success("Exclusão aplicada!")
+                    st.rerun()
 
-        # Preview com edições
-        if any(rules for rules in st.session_state.edit_rules.values()):
-            st.write("### Preview com Edições:")
-            df_preview = st.session_state.df.copy()
-            
-            def highlight_edits(x):
-                styles = pd.DataFrame('', index=x.index, columns=x.columns)
-                
-                for (row, col) in st.session_state.edit_rules['deleted_cells']:
-                    styles.iloc[row, df_preview.columns.get_loc(col)] = 'background-color: #FFE6E6'
-                
-                for (row, col) in st.session_state.edit_rules['centered_cells']:
-                    styles.iloc[row, df_preview.columns.get_loc(col)] = 'text-align: center'
-                
-                return styles
-            
-            # Aplicar edições de texto para preview
-            for (row, col), texto in st.session_state.edit_rules['edited_cells'].items():
-                df_preview.iloc[row, df_preview.columns.get_loc(col)] = texto
-            
-            st.dataframe(df_preview.style.apply(highlight_edits, axis=None), key="df_preview_edits")
-
-    # Opções de Download - Remover seção duplicada e manter apenas esta
-    st.write("### Opções de Download")
-    download_option = st.radio(
-        "Escolha uma opção:",
-        ["Baixar planilha original", "Aplicar cálculos e baixar"],
-        key="download_option_radio_unico"
-    )
+        # Mostrar preview logo após as ferramentas
+        st.write("### Preview dos Dados:")
+        df_preview = apply_all_edits_to_df(df_atual)
+        st.dataframe(df_preview, use_container_width=True)
     
-    if download_option == "Baixar planilha original":
+    # Botões de ação
+    col1, col2 = st.columns(2)
+    with col1:
         if st.button("Baixar Planilha"):
-            # Criar cópia dos dados para aplicar cores
-            data_with_colors = {'usuarios': st.session_state.df.to_dict('records')}
-            
-            # Aplicar cores definidas pelo usuário
-            if 'color_rules' in st.session_state:
-                for record in data_with_colors['usuarios']:
-                    for key, value in record.items():
-                        str_value = str(value)
-                        # Aplicar cores por valor
-                        if str_value in st.session_state.color_rules['valores']:
-                            record[key] = f"{value}#{st.session_state.color_rules['valores'][str_value]}"
-                        # Aplicar cores por coluna
-                        elif key in st.session_state.color_rules['colunas']:
-                            record[key] = f"{value}#{st.session_state.color_rules['colunas'][key]}"
-            
-            filename = save_data_to_excel(data_with_colors)
+            filename = save_data_to_excel({'usuarios': df_atual.to_dict('records')})
             if filename:
                 with open(filename, "rb") as f:
                     bytes_data = f.read()
                 st.download_button(
                     "Download Excel",
                     bytes_data,
-                    file_name="planilha_formatada.xlsx",
+                    file_name="planilha_final.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-    else:
-        colunas_numericas = st.session_state.df.select_dtypes(include=['int64', 'float64']).columns
-        if len(colunas_numericas) > 0:
-            coluna_calculo = st.selectbox("Selecione a coluna:", colunas_numericas)
-            calculos_selecionados = st.multiselect("Selecione os cálculos:", list(CALCULOS.keys()))
-            
-            if calculos_selecionados:
-                # Criar cópia para não modificar os dados originais
-                df_calculado = aplicar_calculos(st.session_state.df.copy(), coluna_calculo, calculos_selecionados)
-                
-                # Mostrar preview dos dados calculados
-                st.write("### Preview dos Dados com Cálculos:")
-                st.dataframe(df_calculado)
-                
-                # Botão para download
-                if st.button("Baixar Planilha com Cálculos"):
-                    filename = save_data_to_excel({'usuarios': df_calculado.to_dict('records')})
-                    if filename:
-                        with open(filename, "rb") as f:
-                            bytes_data = f.read()
-                        st.download_button(
-                            "Download Excel com Cálculos",
-                            bytes_data,
-                            file_name="planilha_com_calculos.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+    
+    # Corrigir o botão de limpar edições
+    with col2:
+        if st.button("Limpar Todas as Edições"):
+            st.session_state.edit_rules = {
+                'deleted_cells': set(),
+                'centered_cells': dict(),  # Mudado de set para dict
+                'edited_cells': {}
+            }
+            st.session_state.color_rules = {'valores': {}, 'colunas': {}}
+            st.session_state.headers_edit = {}  # Limpar também os cabeçalhos
+            st.success("Todas as edições foram removidas!")
+            st.rerun()  # Forçar atualização da interface
